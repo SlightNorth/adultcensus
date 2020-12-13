@@ -1,0 +1,372 @@
+---
+title: "ChooseYourOwnCapstone"
+author: "Daniel Constable"
+date: "12/9/2020"
+output: 
+  html_document:
+    toc: true # table of content true
+    toc_depth: 3  # upto three depths of headings (specified by #, ## and ###)
+    number_sections: true  ## if you want number sections at each table header
+    theme: darkly  # many options for theme, this one is my favorite.
+    highlight: default  # specifies the syntax highlighting style
+---
+
+## Preface
+
+This project is the choose your own capstone project for HarvardX's Professional Certificate in Data Science. This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents.
+
+## Introduction and Project Overview
+
+Machine learning is one of the most important data science methodologies, and its use has led to a range of discoveries, inventions, and improvements to our lives. In short, machine learning is an algorithm (or set of algorithms) that improve automatically through experience.
+
+Some common instances in which you may have interacted with machine learning would be:
+
+* Spam filters in your email service
+* Netflix movie recommendations 
+* Friend and page recommendations on social media
+* Fraud detection through credit card companies
+
+Although some of the most common machine learning use cases today are from private companies who have an interest in increasing time on a platform or revenue, there are also use cases in the public sector. 
+
+In this project, I will use a dataset from one such sector.
+
+My goal in this project is to determine the effects of various socioeconomic factors in predicting income level. I will predict whether income exceeds $50K/year based on census data.
+
+### The Adult Census Income Dataset
+
+This data was extracted from the 1994 Census bureau database by Ronny Kohavi and Barry Becker (Data Mining and Visualization, Silicon Graphics). 
+
+I'll download the dataset from my GitHub account.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.duplicate.label = "allow")
+#Load the libraries
+library(tidyverse)
+library(caret)
+library(data.table)
+library(dslabs)
+library(dplyr)
+library(ggthemes)
+income_data <- read.csv("https://raw.githubusercontent.com/SlightNorth/adultcensus/main/adult.csv")
+
+```
+## Process and Workflow
+
+I’ll go through the following data science project steps to work toward that goal:
+
+1. Data preparation
+2. Data exploration
+3. Data cleaning
+4. Data analysis
+5. Results communication
+
+There will be two subsets of data for training and validation. The training subset is called ‘test_set’ and the validation subset is called ‘training_set.’
+
+## Exploratory Data Analysis
+
+Before I get into analyzing the data, it's important to explore the data to see how it's structured and what it looks like.
+
+### What The Data Looks Like
+
+I use the str() function to oberve the structure of the data.
+
+```{r income_data}
+
+str(income_data)
+
+```
+
+We see that there are 32,561 observations (rows) and 15 variables (columns).
+
+The 15 columns are:
+
+1. age (integer)
+2. workclass (factor with 9 levels)
+3. fnlwgt (integer)
+4. education (factor with 16 levels)
+5. education.num (integer)
+6. marital.status (factor with 7 levels)
+7. occupation (factor with 15 levels)
+8. relationship (factor with 6 levels)
+9. race (factor with 5 levels)
+10. sex (factor with 2 levels)
+11. capital.gain (integer)
+12. capital.loss (integer)
+13. hours.per.week (integer)
+14. native.country (factor with 42 levels)
+15. income (factor with 2 levels)
+
+To see the dimensions of the data, you can also use the dim() function.
+
+```{r dim}
+
+dim(income_data)
+
+```
+
+We can then use the head() function to check the head of the dataset.
+
+```{r head}
+
+head(income_data)
+
+```
+
+The dataset is in tidy format. Tidy format means that each variable is a column and each observation is a row.
+
+### Exploring Working Class
+
+We can check who the people are working for in this dataset. 
+
+```{r working class}
+
+income_data %>% group_by(workclass) %>%
+  summarize(n=n()) %>% head()
+
+```
+``` {r working class graph, echo = FALSE}
+
+income_data %>% group_by(workclass) %>% ggplot(aes(workclass)) + geom_bar() + theme_stata() + scale_x_discrete(guide = guide_axis(n.dodge=3))
+
+```
+
+
+We see the most common employer is in the private sector, while Self-emp-not-inc comes in second, and local government comes in second. We also note that a significant portion fall under the '?' category.
+
+### Exploring Education Level
+
+We can check the education level of the people in the dataset.
+
+```{r education}
+
+income_data %>% group_by(education) %>%
+  summarize(n=n()) %>% head()
+
+```
+``` {r education graph, echo = FALSE}
+
+income_data %>% group_by(education) %>% ggplot(aes(education)) + geom_bar() + theme_stata() + scale_x_discrete(guide = guide_axis(n.dodge=3))
+
+```
+
+We see that the most common level of education to have finished is high school grad, while the second most common is some college.
+
+### Exploring Marital Status
+
+We can break down the marital status in our dataset.
+
+```{r marital status}
+
+income_data %>% group_by(marital.status) %>%
+  summarize(n=n()) %>% head()
+
+```
+
+``` {r marital status graph, echo = FALSE}
+
+income_data %>% group_by(marital.status) %>% ggplot(aes(marital.status)) + geom_bar() + theme_stata() + scale_x_discrete(guide = guide_axis(n.dodge=3))
+
+```
+
+The most common status is married with a civilian spouse, while the second most common is never married.
+
+### Exploring Occupation
+
+We can break down the people in the dataset by most common occupations.
+
+``` {r occupation}
+
+income_data %>% group_by(occupation) %>%
+  summarize(n=n()) %>% head()
+
+```
+
+``` {r occupation graph, echo = FALSE}
+
+income_data %>% group_by(occupation) %>% ggplot(aes(occupation)) + geom_bar() + theme_stata() + scale_x_discrete(guide = guide_axis(n.dodge=3))
+
+```
+
+The most common occupations we see are professional specialites and craft/repair. Again, a significant portion falls under the '?' category.
+
+### Exploring Relationships
+
+We can check the status of relationships in the dataset.
+
+``` {r relationships}
+
+income_data %>% group_by(relationship) %>%
+  summarize(n=n()) %>% head()
+
+```
+
+``` {r relationshipgraph, echo = FALSE}
+
+income_data %>% group_by(relationship) %>% ggplot(aes(relationship)) + geom_bar() + theme_stata() + scale_x_discrete(guide = guide_axis(n.dodge=3))
+
+```
+
+We see that Husband is the most common relationship identifier, while Not-in-family is second. Interestinly, just 1,569 identify as Wife despite the number identifying as Husband.
+
+### Exploring Race
+
+We can explore the data by race.
+
+``` {r race}
+
+income_data %>% group_by(race) %>%
+  summarize(n=n()) %>% head()
+
+```
+
+``` {r race graph, echo = FALSE}
+
+income_data %>% group_by(race) %>% ggplot(aes(race)) + geom_bar() + theme_stata() + scale_x_discrete(guide = guide_axis(n.dodge=3))
+
+```
+We see that by far the most common race is White, while the second most common race is Black.
+
+### Exploring Sex
+
+```{r sex}
+
+income_data %>% group_by(sex) %>%
+summarize(n=n()) %>% head()
+
+```
+```{r sex graph, echo = FALSE}
+
+income_data %>% group_by(sex) %>% ggplot(aes(sex)) + geom_bar() + theme_stata() + scale_x_discrete(guide = guide_axis(n.dodge=3))
+
+```
+
+
+We see that have nearly double the number of Males than Females in this dataset.
+
+### Exploring Hours Per Week
+
+```{r hours}
+
+income_data %>% group_by(hours.per.week) %>%
+  summarize(n=n())
+
+```
+
+```{r hours graph, echo = FALSE}
+
+income_data %>% group_by(hours.per.week) %>% ggplot(aes(hours.per.week)) + geom_bar() + theme_stata() + scale_x_discrete(guide = guide_axis(n.dodge=3))
+
+```
+### Exploring Native Country
+
+```{r native country}
+
+income_data %>% group_by(native.country) %>%
+  summarize(n=n()) 
+
+```
+
+```{r native country graph, echo = FALSE}
+
+income_data %>% group_by(native.country) %>% ggplot(aes(native.country)) + geom_bar() + theme_stata() + scale_x_discrete(guide = guide_axis(n.dodge=3))
+
+```
+
+### Exploring Income
+
+We can explore the number of people who earn less than 50K and more than 50K.
+
+```{r income}
+
+income_data %>% group_by(income) %>%
+  summarize(n=n()) 
+
+```
+
+```{r income graph}
+
+income_data %>% group_by(income) %>% ggplot(aes(income)) + geom_bar() + theme_stata() + scale_x_discrete(guide = guide_axis(n.dodge=3))
+
+```
+
+We see that nearly three times more people earn less than 50K than they do more than 50K.
+
+## Partitioning the Data
+
+We'll start by partitioning the data into a test set and a training set to train and test our models.
+
+```{r training and test set}
+
+y <- income_data$income
+set.seed(2, sample.kind = "Rounding") # if using R 3.5 or earlier, remove the sample.kind argument
+test_index <- createDataPartition(y, times = 1, p = 0.5, list = FALSE)
+test_set <- income_data[test_index, ]
+train_set <- income_data[-test_index, ]
+
+```
+
+## Logistic Regression
+
+We'll start by using the glm() function to see what variables have an influence on income. 
+
+``` {r log model}
+
+summary(glm(income ~ ., family = binomial(), income_data))
+
+
+```
+
+We see that some of the most influential variables on income in our dataset are age, class of work, education level, race, and sex.
+
+## Decision Tree
+
+We'll use a decision tree to predict income.
+
+```{r decision tree}
+
+library(rpart)
+library(rpart.plot)
+
+fit_tree <- rpart(income~.,data=train_set,method = 'class')
+print(fit_tree)
+rpart.plot(fit_tree, box.col=c("red", "blue"))
+decision_prediction<- predict(fit_tree,newdata=test_set[-15],type = 'class')
+TreeAcu<-confusionMatrix(decision_prediction,test_set$income)$overall[1]
+TreeAcu
+
+```
+
+The decision tree has an accurace of ~84%.
+
+## Random Forest
+
+In this section, I'll use Random Forest to predict income. 
+
+```{r graph predictions}
+
+library("randomForest")
+random_forest <- randomForest(income~., data = train_set, method = "class", ntree = 500, do.trace = 100)
+
+test_set$rf.predicted.income <- predict(random_forest, test_set, type = "class")
+
+rfconfMat <- table(test_set$rf.predicted.income, test_set$income)
+rfaccuracy <- sum(diag(rfconfMat))/sum(rfconfMat)
+rfconfMat
+rfaccuracy
+
+```
+
+We see that Random Forest gives us an accuracy of ~86%.
+
+## Results
+
+We see from our analysis that we can use several socioeconomic factors to predict whether or not someone will earn more or less than $50,000 per year. Based on our logistic analysis, we know that some important factors are age, sex (males are more likely to earn more), race (white people are more likely to earn more), and education (higher education leads to people earning more). 
+
+Using the Random Forest method, we can use these factors to predict income level with ~86% accuracy.
+
+## Conclusion
+
+This dataset appears to confirm much of what we know about socioeconomic status. If you're an older white male with higher education, you're more likely to earn more than $50,000 per year than people from other socioeconomic backgrounds. Based on this information, economists could then work to create initiatives that focus on increasing the living standard for people outside of this demographic.
+
+
